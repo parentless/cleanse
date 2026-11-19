@@ -1,6 +1,6 @@
 [package]
 name = "cleanse"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Cleanse — Fast, zero-risk storage intelligence & reclamation for macOS and Windows built with Rune"
 license = "MIT"

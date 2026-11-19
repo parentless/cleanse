@@ -1,3 +1,4 @@
+#![cfg_attr(windows, windows_subsystem = "windows")]
 mod cleaner;
 mod diskmap;
 mod fixtures;
