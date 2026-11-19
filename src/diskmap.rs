@@ -2548,7 +2548,10 @@ mod tests {
         let node = scan_dir(&sh, &tmp, "t".into(), 0, dev, 0);
 
         assert!(node.bytes >= 5_000_000 + 6_000_000, "bytes {}", node.bytes);
-        assert!(node.bytes < 5_000_000 + 6_000_000 + 2_000_000, "hard link double-counted: {}", node.bytes);
+        // Windows cannot identify hard links cheaply, so it counts each path.
+        if cfg!(unix) {
+            assert!(node.bytes < 5_000_000 + 6_000_000 + 2_000_000, "hard link double-counted: {}", node.bytes);
+        }
         let big = node.find_child("big").expect("big dir kept");
         assert!(big.bytes >= 5_000_000);
         let many = node.find_child("many").expect("many dir kept");

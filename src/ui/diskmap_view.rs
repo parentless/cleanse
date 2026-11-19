@@ -276,6 +276,11 @@ fn command_part(how: &str) -> &str {
 // Page
 // ---------------------------------------------------------------------------
 
+/// Stable element key for a path: forward slashes on every OS.
+fn pkey(p: &std::path::Path) -> String {
+    p.to_string_lossy().replace('\\', "/")
+}
+
 pub fn build_map_view(s: &ClearanceApp, k: &Kit) -> El {
     let c = &k.c;
     let mut page = col()
@@ -816,7 +821,7 @@ fn build_explorer(s: &ClearanceApp, k: &Kit) -> El {
         };
 
         let mut r = row()
-            .key(format!("map-row-{}-{}", n.path.display(), n.name))
+            .key(format!("map-row-{}-{}", pkey(&n.path), n.name))
             .w_full()
             .px(12.0)
             .py(8.0)
@@ -929,7 +934,7 @@ fn candidate_row(cand: &Candidate, now: u64, selected: Option<&Path>, k: &Kit) -
     let active = selected.is_some_and(|p| p == cand.path);
     let when = changed_text(cand.newest_mtime, now);
     row()
-        .key(format!("cand-{}", cand.path.display()))
+        .key(format!("cand-{}", pkey(&cand.path)))
         .w_full()
         .px(12.0)
         .py(9.0)
@@ -1125,7 +1130,7 @@ fn build_biggest_files(s: &ClearanceApp, k: &Kit) -> El {
         let when = changed_text(f.mtime, now);
         list = list.child(
             row()
-                .key(format!("topfile-{}", f.path.display()))
+                .key(format!("topfile-{}", pkey(&f.path)))
                 .w_full()
                 .px(12.0)
                 .py(8.0)

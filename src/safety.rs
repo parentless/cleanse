@@ -269,7 +269,9 @@ pub fn verify_item_for_clean(item: &ScanItem, home_dir: &Path, active_processes:
 
 /// Pure path-level constitutional check (usable both on live filesystem and in unit tests).
 pub fn verify_path_constitution(raw_path: &Path, category: Category, home_dir: &Path) -> SafetyVerdict {
-    if !raw_path.is_absolute() {
+    // `has_root` (not `is_absolute`): on Windows a rooted path without a drive is still never
+    // relative; it simply fails the home-prefix check below.
+    if !raw_path.has_root() {
         return SafetyVerdict::Denied {
             reason: "Relative paths are unconditionally rejected".into(),
         };
@@ -640,6 +642,27 @@ mod tests {
         }
         for d in ["Users", "Projects", "Games"] {
             assert!(!is_windows_system_dir(d), "{d}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn real_windows_drive_paths_are_judged_without_regard_to_case() {
+        let home = Path::new(r"C:\Users\Tester");
+        for p in [
+            r"C:\Windows\System32\drivers",
+            r"c:\WINDOWS\Temp",
+            r"C:\Program Files\Git",
+            r"C:\ProgramData\Microsoft",
+            r"C:\",
+            r"D:\Games",
+            r"C:\Users\Tester\appdata\roaming\Code",
+            r"C:\Users\TESTER\ONEDRIVE\proj\node_modules",
+        ] {
+            assert!(!verify_path_constitution(Path::new(p), Category::SystemCaches, home).is_allowed(), "{p}");
+        }
+        for p in [r"C:\Users\Tester\AppData\Local\Temp\junk", r"C:\USERS\TESTER\APPDATA\LOCAL\TEMP\Junk"] {
+            assert!(verify_path_constitution(Path::new(p), Category::SystemCaches, home).is_allowed(), "{p}");
         }
     }
 }
