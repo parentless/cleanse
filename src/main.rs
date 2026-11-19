@@ -358,10 +358,10 @@ mod tests {
                 .iter()
                 .all(|c| c.class.can_free() && !c.path.starts_with("/System"))
         );
-        let first = rt.state.map.candidates[0].path.display().to_string();
+        let first = rt.state.map.candidates[0].path.display().to_string().replace('\\', "/");
         click(&mut rt, &format!("cand-{first}"));
         assert_eq!(
-            rt.state.map_ui.selected.as_ref().map(|s| s.path.display().to_string()),
+            rt.state.map_ui.selected.as_ref().map(|s| s.path.display().to_string().replace('\\', "/")),
             Some(first)
         );
     }
