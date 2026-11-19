@@ -1,0 +1,76 @@
+name: CI
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --release
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          cargo build --release
+          mkdir -p dist
+          cp target/release/cleanse.exe dist/Cleanse.exe
+      - name: Build (macOS app bundle)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          rustup target add x86_64-apple-darwin
+          cargo build --release --target aarch64-apple-darwin
+          cargo build --release --target x86_64-apple-darwin
+          mkdir -p dist/Cleanse.app/Contents/MacOS
+          lipo -create -output dist/Cleanse.app/Contents/MacOS/Cleanse \
+            target/aarch64-apple-darwin/release/cleanse target/x86_64-apple-darwin/release/cleanse
+          cat > dist/Cleanse.app/Contents/Info.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>CFBundleName</key><string>Cleanse</string>
+          <key>CFBundleDisplayName</key><string>Cleanse</string>
+          <key>CFBundleIdentifier</key><string>dev.cleanse.app</string>
+          <key>CFBundleExecutable</key><string>Cleanse</string>
+          <key>CFBundlePackageType</key><string>APPL</string>
+          <key>CFBundleShortVersionString</key><string>0.1.0</string>
+          <key>LSMinimumSystemVersion</key><string>12.0</string>
+          <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          codesign --force --deep --sign - dist/Cleanse.app
+          cd dist && ditto -c -k --keepParent Cleanse.app Cleanse-macOS.zip && rm -rf Cleanse.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cleanse-${{ runner.os }}
+          path: dist/*
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/Cleanse.exe dist/Cleanse-macOS.zip \
+            --repo "$GITHUB_REPOSITORY" --title "Cleanse ${GITHUB_REF_NAME#v}" \
+            --notes "Windows: download **Cleanse.exe**. macOS (Apple Silicon + Intel): download **Cleanse-macOS.zip**. See the README for first-run steps and safety notes."

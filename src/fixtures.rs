@@ -1,0 +1,501 @@
+//! Deterministic demo & `break-ui` stress-test datasets (`fixtures.rs`).
+//!
+//! Powers headless snapshots, automated layout/pluralization tests, and the interactive
+//! Dev Harness (`Live Mac | Demo | Worst Case | Empty | 1 Item | 5,000 Rows`).
+
+use std::path::PathBuf;
+
+use crate::model::{Category, DatasetMode, DiskOverview, SafetyTier, ScanItem};
+
+pub fn dataset_for(mode: DatasetMode) -> (DiskOverview, Vec<ScanItem>) {
+    match mode {
+        DatasetMode::LiveMac | DatasetMode::Demo => demo_dataset(),
+        DatasetMode::WorstCase => worst_case_dataset(),
+        DatasetMode::Empty => empty_dataset(),
+        DatasetMode::SingleItem => single_item_dataset(),
+        DatasetMode::Massive5k => massive_5k_dataset(),
+    }
+}
+
+pub fn demo_dataset() -> (DiskOverview, Vec<ScanItem>) {
+    let disk = DiskOverview {
+        volume_name: "Macintosh HD".into(),
+        mount_point: "/System/Volumes/Data".into(),
+        filesystem: "APFS".into(),
+        total_bytes: 500_000_000_000,
+        free_bytes: 61_800_000_000,
+        purgeable_bytes: 16_400_000_000,
+        local_snapshots: 3,
+    };
+
+    let item = |id: &str,
+                name: &str,
+                subtitle: &str,
+                path: &str,
+                bytes: u64,
+                logical_bytes: u64,
+                category: Category,
+                safety: SafetyTier,
+                age_days: u32,
+                file_count: u64,
+                rebuild: Option<&str>,
+                in_use: Option<&str>,
+                selected: bool| ScanItem {
+        id: id.into(),
+        name: name.into(),
+        subtitle: subtitle.into(),
+        path: PathBuf::from(path),
+        bytes,
+        logical_bytes,
+        category,
+        safety,
+        age_days,
+        file_count,
+        rebuild_hint: rebuild.map(str::to_owned),
+        in_use_by: in_use.map(str::to_owned),
+        selected,
+    };
+
+    let items = vec![
+        // Dormant Build Artifacts
+        item(
+            "demo-1",
+            "photon-renderer / target",
+            "Rust Cargo target/ artifact · rebuilds via `cargo build`",
+            "/Users/alex/Developer/photon-renderer/target",
+            9_840_000_000,
+            9_840_000_000,
+            Category::DevArtifacts,
+            SafetyTier::SafeRegenerable,
+            46,
+            24_810,
+            Some("cargo build"),
+            None,
+            true,
+        ),
+        item(
+            "demo-2",
+            "studio-web / node_modules",
+            "Node.js node_modules/ dependencies · rebuilds via `pnpm install`",
+            "/Users/alex/Developer/studio-web/node_modules",
+            2_680_000_000,
+            2_680_000_000,
+            Category::DevArtifacts,
+            SafetyTier::SafeRegenerable,
+            38,
+            68_420,
+            Some("pnpm install"),
+            None,
+            true,
+        ),
+        item(
+            "demo-3",
+            "ml-eval-harness / .venv",
+            "Python virtual environment (pyvenv.cfg verified)",
+            "/Users/alex/Projects/ml-eval-harness/.venv",
+            3_420_000_000,
+            3_420_000_000,
+            Category::DevArtifacts,
+            SafetyTier::SafeRegenerable,
+            62,
+            19_104,
+            Some("uv sync"),
+            None,
+            true,
+        ),
+        item(
+            "demo-4",
+            "marketing-site / .next",
+            "Next.js build cache (.next/) · rebuilds via `npm run build`",
+            "/Users/alex/Developer/marketing-site/.next",
+            1_190_000_000,
+            1_190_000_000,
+            Category::DevArtifacts,
+            SafetyTier::SafeRegenerable,
+            4,
+            3_912,
+            Some("npm run build"),
+            None,
+            false,
+        ),
+        // SDK & Toolchain Hoards
+        item(
+            "demo-5",
+            "Xcode DerivedData",
+            "Intermediate Swift/Clang module caches, indexes, and build products",
+            "/Users/alex/Library/Developer/Xcode/DerivedData",
+            8_760_000_000,
+            8_760_000_000,
+            Category::ToolchainHoards,
+            SafetyTier::SafeRegenerable,
+            21,
+            41_290,
+            Some("Rebuilt automatically by Xcode on next build"),
+            None,
+            true,
+        ),
+        item(
+            "demo-6",
+            "Homebrew Bottle & Source Cache",
+            "Downloaded .bottle.tar.gz installers kept after brew upgrade",
+            "/Users/alex/Library/Caches/Homebrew",
+            4_120_000_000,
+            4_120_000_000,
+            Category::ToolchainHoards,
+            SafetyTier::SafeRegenerable,
+            19,
+            318,
+            Some("brew cleanup / fetched automatically on brew reinstall"),
+            None,
+            true,
+        ),
+        item(
+            "demo-7",
+            "Cargo Crate Archives (.crate)",
+            "Downloaded crates.io tarballs cached locally",
+            "/Users/alex/.cargo/registry/cache",
+            2_340_000_000,
+            2_340_000_000,
+            Category::ToolchainHoards,
+            SafetyTier::SafeRegenerable,
+            31,
+            4_612,
+            Some("Re-downloaded automatically by Cargo on demand"),
+            None,
+            true,
+        ),
+        item(
+            "demo-8",
+            "uv Python Wheel & Archive Cache",
+            "Cached PyTorch & CUDA wheels inside ~/.cache/uv",
+            "/Users/alex/.cache/uv",
+            1_940_000_000,
+            1_940_000_000,
+            Category::ToolchainHoards,
+            SafetyTier::SafeRegenerable,
+            27,
+            1_845,
+            Some("Re-populated automatically by uv sync"),
+            None,
+            true,
+        ),
+        // App & System Caches
+        item(
+            "demo-9",
+            "Spotify Audio Stream Cache",
+            "App Cache · com.spotify.client",
+            "/Users/alex/Library/Caches/com.spotify.client",
+            2_450_000_000,
+            2_450_000_000,
+            Category::SystemCaches,
+            SafetyTier::SafeRegenerable,
+            9,
+            6_120,
+            Some("Recreated automatically when Spotify streams audio"),
+            None,
+            true,
+        ),
+        item(
+            "demo-10",
+            "Slack ShipIt Updater Cache",
+            "App Cache · com.tinyspeck.slackmacgap.ShipIt",
+            "/Users/alex/Library/Caches/com.tinyspeck.slackmacgap.ShipIt",
+            980_000_000,
+            980_000_000,
+            Category::SystemCaches,
+            SafetyTier::SafeRegenerable,
+            34,
+            42,
+            Some("Stale staged update bundles · safe to purge"),
+            None,
+            true,
+        ),
+        item(
+            "demo-11",
+            "Google Chrome Code Cache",
+            "App Cache · com.google.Chrome (paused while browser is open)",
+            "/Users/alex/Library/Caches/Google/Chrome",
+            1_760_000_000,
+            1_760_000_000,
+            Category::SystemCaches,
+            SafetyTier::SafeRegenerable,
+            0,
+            14_300,
+            Some("Close Chrome to include active browser cache"),
+            Some("Google Chrome"),
+            false,
+        ),
+        // Forgotten Installers
+        item(
+            "demo-12",
+            "Xcode_16.2_Universal.xip.dmg",
+            "Disk image in ~/Downloads · App already installed in /Applications",
+            "/Users/alex/Downloads/Xcode_16.2_Universal.xip.dmg",
+            3_210_000_000,
+            3_210_000_000,
+            Category::InstallerGhosts,
+            SafetyTier::ReviewRecommended,
+            54,
+            1,
+            Some("Re-downloadable from Apple Developer Downloads"),
+            None,
+            true,
+        ),
+        item(
+            "demo-13",
+            "Docker-Desktop-arm64-4.38.dmg",
+            "Disk image in ~/Downloads · App already installed in /Applications",
+            "/Users/alex/Downloads/Docker-Desktop-arm64-4.38.dmg",
+            690_000_000,
+            690_000_000,
+            Category::InstallerGhosts,
+            SafetyTier::ReviewRecommended,
+            29,
+            1,
+            Some("Re-downloadable from docker.com"),
+            None,
+            true,
+        ),
+        // Orphaned App Leftovers
+        item(
+            "demo-14",
+            "Loom Cache",
+            "No matching app found in /Applications · com.loom.desktop",
+            "/Users/alex/Library/Caches/com.loom.desktop",
+            1_320_000_000,
+            1_320_000_000,
+            Category::OrphanedLeftovers,
+            SafetyTier::ReviewRecommended,
+            118,
+            2_108,
+            Some("Leftover cache from uninstalled Loom.app"),
+            None,
+            false,
+        ),
+        item(
+            "demo-15",
+            "Figma Agent Cache",
+            "No matching app found in /Applications · com.figma.agent",
+            "/Users/alex/Library/Caches/com.figma.agent",
+            540_000_000,
+            540_000_000,
+            Category::OrphanedLeftovers,
+            SafetyTier::ReviewRecommended,
+            84,
+            890,
+            Some("Leftover font/shader cache from uninstalled Figma.app"),
+            None,
+            false,
+        ),
+        // Unemptied Trash
+        item(
+            "demo-16",
+            "old-screen-recordings-2025",
+            "Sitting in ~/.Trash · Still occupying APFS blocks",
+            "/Users/alex/.Trash/old-screen-recordings-2025",
+            1_860_000_000,
+            1_860_000_000,
+            Category::TrashBin,
+            SafetyTier::ReviewRecommended,
+            17,
+            14,
+            Some("Already trashed by user"),
+            None,
+            false,
+        ),
+        // Large File Radar (Inspect-Only + Sparse File showcase!)
+        item(
+            "demo-17",
+            "Docker.raw (Linux VM Sparse Image)",
+            "Sparse file: 64.00 GB apparent, only 8.40 GB allocated on APFS",
+            "/Users/alex/Downloads/Docker.raw",
+            8_400_000_000,
+            64_000_000_000,
+            Category::Heavyweights,
+            SafetyTier::ProtectedInspectOnly,
+            2,
+            1,
+            Some("Inspect in Finder — never touched by Cleanse"),
+            None,
+            false,
+        ),
+        item(
+            "demo-18",
+            "Keynote-Master-ProRes-422.mov",
+            "Large personal file in ~/Movies · Inspect Only",
+            "/Users/alex/Movies/Keynote-Master-ProRes-422.mov",
+            11_200_000_000,
+            11_200_000_000,
+            Category::Heavyweights,
+            SafetyTier::ProtectedInspectOnly,
+            73,
+            1,
+            Some("Personal media — constitutionally locked from batch sweeps"),
+            None,
+            false,
+        ),
+    ];
+
+    (disk, items)
+}
+
+/// `break-ui` worst-case fixture: stresses ultra-long paths, unbreakable reverse-DNS tokens,
+/// Unicode + CJK + RTL + emoji strings, extreme byte ranges (`1 B` to `1.04 TB`), and sparse ratios.
+pub fn worst_case_dataset() -> (DiskOverview, Vec<ScanItem>) {
+    let disk = DiskOverview {
+        volume_name: "Aleksandra Wiśniewska-Kowalczyk’s External APFS Studio RAID — テスト 🚀".into(),
+        mount_point: "/Volumes/Aleksandra-UltraWide-Studio-NVMe-Enclosure-2026".into(),
+        filesystem: "APFS (Case-Sensitive, Encrypted)".into(),
+        total_bytes: 2_000_000_000_000,
+        free_bytes: 4_120_000_000, // Critically low (< 0.3% free!)
+        purgeable_bytes: 142_800_000_000,
+        local_snapshots: 19,
+    };
+
+    let items = vec![
+        ScanItem {
+            id: "wc-1".into(),
+            name: "com.supercalifragilisticexpialidocious.enterprise.telemetries.shipit.updater.daemon.cache.v2026".into(),
+            subtitle: "Unbreakable 96-character bundle identifier without spaces to test horizontal flex shrink & ellipsis".into(),
+            path: PathBuf::from("/Users/alex/Library/Caches/com.supercalifragilisticexpialidocious.enterprise.telemetries.shipit.updater.daemon.cache.v2026/Build/Intermediates.noindex/ArchiveIntermediates/ProductionRelease/IntermediateBuildFilesPath/UninstalledProducts/macosx"),
+            bytes: 1_042_500_000_000,
+            logical_bytes: 1_042_500_000_000,
+            category: Category::SystemCaches,
+            safety: SafetyTier::SafeRegenerable,
+            age_days: 730,
+            file_count: 1_482_910,
+            rebuild_hint: Some("cargo build --workspace --all-targets --release --features telemetry,metal,vulkan, Tracy".into()),
+            in_use_by: None,
+            selected: true,
+        },
+        ScanItem {
+            id: "wc-2".into(),
+            name: "Aleksandra Wiśniewska-Kowalczyk — 映像レンダリングキャッシュ 🚀✨ / target".into(),
+            subtitle: "Mixed Polish diacritics + Japanese CJK + emoji + Cargo sentinel".into(),
+            path: PathBuf::from("/Users/alex/Developer/Aleksandra-Wiśniewska-Kowalczyk-プロジェクト-2026/packages/core-gpu-shader-compiler-pipeline/target"),
+            bytes: 84_910_000_000,
+            logical_bytes: 512_000_000_000,
+            category: Category::DevArtifacts,
+            safety: SafetyTier::SafeRegenerable,
+            age_days: 365,
+            file_count: 999_999,
+            rebuild_hint: Some("cargo build".into()),
+            in_use_by: None,
+            selected: true,
+        },
+        ScanItem {
+            id: "wc-3".into(),
+            name: "X".into(),
+            subtitle: "1-char title & 1-byte minimal edge case".into(),
+            path: PathBuf::from("/Users/alex/Library/Caches/x"),
+            bytes: 1,
+            logical_bytes: 1,
+            category: Category::OrphanedLeftovers,
+            safety: SafetyTier::ReviewRecommended,
+            age_days: 0,
+            file_count: 1,
+            rebuild_hint: None,
+            in_use_by: None,
+            selected: false,
+        },
+        ScanItem {
+            id: "wc-4".into(),
+            name: "Active Xcode Indexing Daemon Cache (Locked by Live Process)".into(),
+            subtitle: "Tests simultaneous long process badge + disabled selection lock".into(),
+            path: PathBuf::from("/Users/alex/Library/Developer/Xcode/DerivedData/MonolithWorkspace-fghijklmnopqrstuvwxyz0123456789"),
+            bytes: 47_300_000_000,
+            logical_bytes: 47_300_000_000,
+            category: Category::ToolchainHoards,
+            safety: SafetyTier::SafeRegenerable,
+            age_days: 1,
+            file_count: 310_204,
+            rebuild_hint: Some("Close Xcode to unlock active build index".into()),
+            in_use_by: Some("Xcode (swift-frontend)".into()),
+            selected: false,
+        },
+        ScanItem {
+            id: "wc-5".into(),
+            name: "Archive_With_No_Spaces_At_All_2026_04_18_Final_Final_v99_Universal_Installer.dmg".into(),
+            subtitle: "Disk image in ~/Downloads · App already installed in /Applications".into(),
+            path: PathBuf::from("/Users/alex/Downloads/Archive_With_No_Spaces_At_All_2026_04_18_Final_Final_v99_Universal_Installer.dmg"),
+            bytes: 19_850_000_000,
+            logical_bytes: 19_850_000_000,
+            category: Category::InstallerGhosts,
+            safety: SafetyTier::ReviewRecommended,
+            age_days: 412,
+            file_count: 1,
+            rebuild_hint: Some("Re-downloadable from vendor portal".into()),
+            in_use_by: None,
+            selected: true,
+        },
+        ScanItem {
+            id: "wc-6".into(),
+            name: "Production-Database-Snapshot-DO-NOT-TOUCH.parquet".into(),
+            subtitle: "Sparse file: 250.00 GB apparent, only 12.40 GB allocated on APFS".into(),
+            path: PathBuf::from("/Users/alex/Downloads/Production-Database-Snapshot-DO-NOT-TOUCH.parquet"),
+            bytes: 12_400_000_000,
+            logical_bytes: 250_000_000_000,
+            category: Category::Heavyweights,
+            safety: SafetyTier::ProtectedInspectOnly,
+            age_days: 3,
+            file_count: 1,
+            rebuild_hint: Some("Protected · Inspect Only".into()),
+            in_use_by: None,
+            selected: false,
+        },
+    ];
+
+    (disk, items)
+}
+
+pub fn empty_dataset() -> (DiskOverview, Vec<ScanItem>) {
+    let disk = DiskOverview {
+        volume_name: "Macintosh HD".into(),
+        mount_point: "/System/Volumes/Data".into(),
+        filesystem: "APFS".into(),
+        total_bytes: 500_000_000_000,
+        free_bytes: 312_000_000_000,
+        purgeable_bytes: 2_100_000_000,
+        local_snapshots: 0,
+    };
+    (disk, Vec::new())
+}
+
+pub fn single_item_dataset() -> (DiskOverview, Vec<ScanItem>) {
+    let (disk, mut demo) = demo_dataset();
+    demo.truncate(1);
+    (disk, demo)
+}
+
+pub fn massive_5k_dataset() -> (DiskOverview, Vec<ScanItem>) {
+    let (disk, _) = demo_dataset();
+    let mut items = Vec::with_capacity(5_000);
+    for i in 0..5_000usize {
+        let cat = Category::ALL[i % Category::ALL.len()];
+        let safety = match cat {
+            Category::Heavyweights => SafetyTier::ProtectedInspectOnly,
+            Category::InstallerGhosts | Category::OrphanedLeftovers | Category::TrashBin => {
+                SafetyTier::ReviewRecommended
+            }
+            _ => SafetyTier::SafeRegenerable,
+        };
+        let bytes = ((5_000 - i) as u64) * 3_500_000 + 524_288;
+        let age_days = ((i * 7) % 180) as u32;
+        items.push(ScanItem {
+            id: format!("mass-{i}"),
+            name: format!("workspace-service-{:04} / target", i + 1),
+            subtitle: format!("Synthetic row #{} · virtualization stress test", i + 1),
+            path: PathBuf::from(format!("/Users/alex/Developer/service-{i:04}/target")),
+            bytes,
+            logical_bytes: bytes,
+            category: cat,
+            safety,
+            age_days,
+            file_count: (i as u64 % 800) + 12,
+            rebuild_hint: Some("cargo build".into()),
+            in_use_by: None,
+            selected: safety == SafetyTier::SafeRegenerable && age_days >= 14,
+        });
+    }
+    (disk, items)
+}
